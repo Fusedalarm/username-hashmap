@@ -12,7 +12,6 @@ class Pipeline:
         self.data_file = self.data_dir / "hash-info.txt"
         self.data_file.touch()
         self.hash_managment()
-        self.map_congestion = self.hash_count/self.ARRAY_SIZE
 
 
     def hash_managment(self):
@@ -51,30 +50,6 @@ class Pipeline:
         self.array_update = self.ARRAY_SIZE
         self.array = Array().array_create(self.ARRAY_SIZE)
 
-
-    # def console_menu(self):
-    #     print("\n=========================")
-    #     print("1--------- input values")
-    #     print("2--------- retrieve")
-    #     print("3--------- exit")   
-
-    #     while True:
-    #         try:
-    #             menu_picker = input("choose option: ")
-    #             menu_picker = int(menu_picker)
-
-    #             if menu_picker == 1:
-    #                 self.value_input()
-    #             elif menu_picker == 2:
-    #                 self.retrieve_key()
-    #             elif menu_picker == 3:
-    #                 print("program exiting...")
-    #                 break
-    #             else:
-    #                 print("invalid option")
-                
-    #         except ValueError:
-    #             print("invalid character/s entered")
         
     def value_input(self, key, value):
         self.key = key

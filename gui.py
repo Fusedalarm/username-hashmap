@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox, ttk 
+from tkinter import ttk 
 from pipeline import Pipeline
 
 
@@ -11,7 +11,7 @@ class RootApp:
         self.write_msg("program initialising...")
         self.pipeline = Pipeline()
         self.write_msg("program initialised")
-        self.msg = "Alpha 2.0 (Expect bugs program WIP)"
+        self.msg = "pre-Alpha 2.1 (Expect bugs program WIP)"
         self.write_msg(self.msg)
 
     
@@ -19,6 +19,13 @@ class RootApp:
         self.root.title("Database")
         self.root.geometry("900x700")
         self.root.config(bg="#f5f5f5")
+
+        #getting main window location
+        self.root.update_idletasks() #makes sure to get value once the tkinter ui has been drawn
+
+        self.x = self.root.winfo_x()
+        self.y = self.root.winfo_y()
+
         
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_rowconfigure(1, weight=0)
@@ -51,6 +58,12 @@ class RootApp:
         ttk.Button(action_frame, text="Options", command= lambda: self.open_child_window("s")).pack(side="left", padx=(0, 10))
         ttk.Button(action_frame, text="Clear Screen", command=self.clear_screen).pack(side="left", padx=(0, 10))
         ttk.Button(action_frame, text="Exit", command=self.exit_program).pack(side="left")
+        #keyboard mapping
+        self.root.bind("<Key-1>", lambda event: self.open_child_window("r"))
+        self.root.bind("<Key-2>", lambda event: self.open_child_window("m"))
+        self.root.bind("<Key-3>", lambda event: self.open_child_window("s"))
+        self.root.bind("<Key-4>", lambda event: self.clear_screen())
+        self.root.bind("<Escape>", lambda event: self.exit_program())
 
     def write_msg(self, message):
         self.message = message
@@ -94,9 +107,12 @@ class RetrieveWindow:
     def __init__(self, parent, app):
         self.window = tk.Toplevel(parent)
         self.app = app
+        self.window.transient(parent) # makes child toplevel act as a dialogue box
+        self.window.grab_set() #force use window until closed
+
 
         self.window.title("Retrieve")
-        self.window.geometry("250x166")
+        self.window.geometry(f"250x166+{self.app.x + 800}+{self.app.y + 100}")
         self.window.config(bg="#f5f5f5")
         
         self.window.grid_rowconfigure(0, weight=1)
@@ -112,10 +128,14 @@ class RetrieveWindow:
         
         self.retrieve_entry = ttk.Entry(db_frame, width=40)
         self.retrieve_entry.grid(row=0, column=0, sticky="w", pady=(0, 8))
-
+        self.retrieve_entry.focus_set() # focuses the cursor on the entery when opening the dialogue box
 
         ttk.Button(db_frame, text="Enter", command=lambda: self.retrieve_value(self.retrieve_entry) ).grid(row=1, column=0, sticky="ew", pady=(0, 8))
         ttk.Button(db_frame, text="Close", command=self.close).grid(row=2, column=0, sticky="ew")
+
+        #keyboard mapping
+        self.window.bind("<Return>", lambda event: self.retrieve_value(self.retrieve_entry))
+        self.window.bind("<Escape>", lambda event: self.close())
 
     def close(self):
         self.window.destroy()
@@ -134,9 +154,11 @@ class MapWindow:
     def __init__(self, parent, app):
         self.window = tk.Toplevel(parent)
         self.app = app
+        self.window.transient(parent) # makes child toplevel act as a dialogue box
+        self.window.grab_set() #force use window until closed
 
         self.window.title("Map")
-        self.window.geometry("250x253")
+        self.window.geometry(f"250x253+{self.app.x + 800}+{self.app.y + 100}")
         self.window.config(bg="#f5f5f5")
         
         self.window.grid_rowconfigure(0, weight=1)
@@ -154,6 +176,8 @@ class MapWindow:
         self.key_entry = ttk.Entry(db_frame, width=40)
         self.key_entry.grid(row=1, column=0, sticky="w", pady=(0, 8))
 
+        self.key_entry.focus_set() # starts off cursor on this entry upon initialisation
+
         ttk.Label(db_frame, text="Value").grid(row=2, column=0, sticky="w", padx=(0, 10), pady=(10, 0))
         self.value_entry = ttk.Entry(db_frame, width=40)
         self.value_entry.grid(row=3, column=0, sticky="w", pady=(0, 8))
@@ -161,6 +185,11 @@ class MapWindow:
 
         ttk.Button(db_frame, text="Enter", command=lambda: self.map_value(self.key_entry, self.value_entry)).grid(row=4, column=0, sticky="ew", pady=(0, 8))
         ttk.Button(db_frame, text="Close", command=self.close).grid(row=5, column=0, sticky="ew")
+
+        #keyboard mapping
+        self.window.bind("<Return>", lambda event: self.map_value(self.key_entry, self.value_entry))
+        self.window.bind("<Escape>", lambda event: self.close())
+
 
     def close(self):
         self.window.destroy()
@@ -183,9 +212,12 @@ class StatWindow:
     def __init__(self, parent, app):
         self.window = tk.Toplevel(parent)
         self.app = app
+        self.window.transient(parent) # makes child toplevel act as a dialogue box
+        self.window.grab_set() #force use window until closed (initialises 1 second after window opens)
+        self.window.focus_set() # focuses on the window 
 
         self.window.title("Stats")
-        self.window.geometry("250x155")
+        self.window.geometry(f"250x155+{self.app.x + 800}+{self.app.y + 100}")
         self.window.config(bg="#f5f5f5")
         
         self.window.grid_rowconfigure(0, weight=1)
@@ -205,8 +237,12 @@ class StatWindow:
         ttk.Label(db_frame, text="Hash count: ").grid(row=2, column=0, sticky="w", padx=(0, 10), pady=(10, 0))
 
         ttk.Label(db_frame, text=self.app.pipeline.ARRAY_SIZE).grid(row=0, column=1, sticky="w", padx=(0, 10), pady=(0, 0))
-        ttk.Label(db_frame, text=self.app.pipeline.map_congestion).grid(row=1, column=1, sticky="w", padx=(0, 10), pady=(10, 0))
+        ttk.Label(db_frame, text=f"{(self.app.pipeline.hash_count/self.app.pipeline.ARRAY_SIZE):.4f}").grid(row=1, column=1, sticky="w", padx=(0, 10), pady=(10, 0))
         ttk.Label(db_frame, text=self.app.pipeline.hash_count).grid(row=2, column=1, sticky="w", padx=(0, 10), pady=(10, 0))
+
+        #keyboard mapping
+        self.window.bind("<Escape>", lambda event: self.close())
+
     def close(self):
         self.window.destroy()
 
