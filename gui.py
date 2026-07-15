@@ -10,9 +10,13 @@ class RootApp:
         self.main_ui()
         self.write_msg("program initialising...")
         self.pipeline = Pipeline()
-        self.write_msg("program initialised")
-        self.msg = "pre-Alpha 2.1 (Expect bugs program WIP)"
-        self.write_msg(self.msg)
+        if self.pipeline.initverif != False:
+            self.write_msg("program initialised")
+            self.msg = "pre-Alpha 3.0 (Expect bugs program WIP)"
+            self.write_msg(self.msg)
+        else:
+            self.write_msg("program initialising failed |Error 01")
+            self.write_msg("Diagnostic tool required")
 
     
     def main_ui(self):
@@ -55,13 +59,13 @@ class RootApp:
         
         ttk.Button(action_frame, text="Retrieve", command=lambda: self.open_child_window("r")).pack(side="left", padx=(0, 10))
         ttk.Button(action_frame, text="Map", command= lambda: self.open_child_window("m")).pack(side="left", padx=(0, 10))
-        ttk.Button(action_frame, text="Options", command= lambda: self.open_child_window("s")).pack(side="left", padx=(0, 10))
+        ttk.Button(action_frame, text="Delete", command= lambda: self.open_child_window("d")).pack(side="left", padx=(0, 10))
         ttk.Button(action_frame, text="Clear Screen", command=self.clear_screen).pack(side="left", padx=(0, 10))
         ttk.Button(action_frame, text="Exit", command=self.exit_program).pack(side="left")
         #keyboard mapping
         self.root.bind("<Key-1>", lambda event: self.open_child_window("r"))
         self.root.bind("<Key-2>", lambda event: self.open_child_window("m"))
-        self.root.bind("<Key-3>", lambda event: self.open_child_window("s"))
+        self.root.bind("<Key-3>", lambda event: self.open_child_window("d"))
         self.root.bind("<Key-4>", lambda event: self.clear_screen())
         self.root.bind("<Escape>", lambda event: self.exit_program())
 
@@ -100,8 +104,10 @@ class RootApp:
             RetrieveWindow(self.root, self)
         elif self.selector == "m":
             MapWindow(self.root, self)
-        elif self.selector == "s":
-            StatWindow(self.root, self)
+        elif self.selector == "d":
+            DeleteWindow(self.root, self)
+        # elif self.selector == "s":
+        #     StatWindow(self.root, self)
 
 class RetrieveWindow:
     def __init__(self, parent, app):
@@ -144,8 +150,11 @@ class RetrieveWindow:
         self.entry = entry
         key = self.entry.get().strip()
         if key != "" and key is not None:
-            key = self.app.pipeline.retrieve_key(key)
-            self.app.write_msg(key)
+            key = self.app.pipeline.retrieve(key)
+            if key == False:
+                self.app.write_msg("unable to retrieve; key does not exist")
+            else:
+                self.app.write_msg(f"{key[0]}, {key[1]}")
             self.window.destroy()
         else:
             self.app.write_msg("nothing has been entered")
@@ -204,20 +213,26 @@ class MapWindow:
         if value == "" or value is None:
             self.app.write_msg("'value' entry is empty")
         else:
-            return_value = self.app.pipeline.value_input(key, value)
+            return_value = self.app.pipeline.hash_value(key, value)
             self.window.destroy()
-            self.app.write_msg(return_value)
+            if return_value == True:
+                self.app.write_msg("Hash Success")
+                self.app.pipeline.store_hash(self.key, self.value) #store hash
+            elif return_value == False:
+                self.app.write_msg("Hash Unsuccessful; Key already exists")
+            else:
+                self.app.write_msg("Hash Unsuccessful; Error")
 
-class StatWindow:
+class DeleteWindow:
     def __init__(self, parent, app):
         self.window = tk.Toplevel(parent)
         self.app = app
         self.window.transient(parent) # makes child toplevel act as a dialogue box
-        self.window.grab_set() #force use window until closed (initialises 1 second after window opens)
-        self.window.focus_set() # focuses on the window 
+        self.window.grab_set() #force use window until closed
 
-        self.window.title("Stats")
-        self.window.geometry(f"250x155+{self.app.x + 800}+{self.app.y + 100}")
+
+        self.window.title("Delete")
+        self.window.geometry(f"250x166+{self.app.x + 800}+{self.app.y + 100}")
         self.window.config(bg="#f5f5f5")
         
         self.window.grid_rowconfigure(0, weight=1)
@@ -227,22 +242,72 @@ class StatWindow:
         content_frame.grid(row=0, column=0, sticky="nsew", padx=15, pady=15)
         content_frame.grid_columnconfigure(0, weight=1)
         
-        db_frame = ttk.LabelFrame(content_frame, text="Statistics", padding=15)
+        db_frame = ttk.LabelFrame(content_frame, text="Delete Key: ", padding=15)
         db_frame.grid(row=1, column=0, sticky="ew")
         db_frame.grid_columnconfigure(0, weight=1)
         
-        # test = tk.StringVar(value=Pipeline().array_update)
-        ttk.Label(db_frame, text="Map size: ").grid(row=0, column=0, sticky="w", padx=(0, 10), pady=(0, 0))
-        ttk.Label(db_frame, text="Congestion: ").grid(row=1, column=0, sticky="w", padx=(0, 10), pady=(10, 0))
-        ttk.Label(db_frame, text="Hash count: ").grid(row=2, column=0, sticky="w", padx=(0, 10), pady=(10, 0))
+        self.retrieve_entry = ttk.Entry(db_frame, width=40)
+        self.retrieve_entry.grid(row=0, column=0, sticky="w", pady=(0, 8))
+        self.retrieve_entry.focus_set() # focuses the cursor on the entery when opening the dialogue box
 
-        ttk.Label(db_frame, text=self.app.pipeline.ARRAY_SIZE).grid(row=0, column=1, sticky="w", padx=(0, 10), pady=(0, 0))
-        ttk.Label(db_frame, text=f"{(self.app.pipeline.hash_count/self.app.pipeline.ARRAY_SIZE):.4f}").grid(row=1, column=1, sticky="w", padx=(0, 10), pady=(10, 0))
-        ttk.Label(db_frame, text=self.app.pipeline.hash_count).grid(row=2, column=1, sticky="w", padx=(0, 10), pady=(10, 0))
+        ttk.Button(db_frame, text="Enter", command=lambda: self.delete(self.retrieve_entry) ).grid(row=1, column=0, sticky="ew", pady=(0, 8))
+        ttk.Button(db_frame, text="Close", command=self.close).grid(row=2, column=0, sticky="ew")
 
         #keyboard mapping
+        self.window.bind("<Return>", lambda event: self.delete(self.retrieve_entry))
         self.window.bind("<Escape>", lambda event: self.close())
 
     def close(self):
         self.window.destroy()
+    
+    def delete(self, entry):
+        self.entry = entry
+        key = self.entry.get().strip()
+        if key != "" and key is not None:
+            key = self.app.pipeline.delete(key)
+            if key == False:
+                self.app.write_msg("unable to delete; key does not exist")
+            else:
+                self.app.write_msg("deletion successful")
+            self.window.destroy()
+        else:
+            self.app.write_msg("nothing has been entered")
+
+# class StatWindow:
+#     def __init__(self, parent, app):
+#         self.window = tk.Toplevel(parent)
+#         self.app = app
+#         self.window.transient(parent) # makes child toplevel act as a dialogue box
+#         self.window.grab_set() #force use window until closed (initialises 1 second after window opens)
+#         self.window.focus_set() # focuses on the window 
+
+#         self.window.title("Stats")
+#         self.window.geometry(f"250x155+{self.app.x + 800}+{self.app.y + 100}")
+#         self.window.config(bg="#f5f5f5")
+        
+#         self.window.grid_rowconfigure(0, weight=1)
+#         self.window.grid_columnconfigure(0, weight=1)
+        
+#         content_frame = ttk.Frame(self.window)
+#         content_frame.grid(row=0, column=0, sticky="nsew", padx=15, pady=15)
+#         content_frame.grid_columnconfigure(0, weight=1)
+        
+#         db_frame = ttk.LabelFrame(content_frame, text="Statistics", padding=15)
+#         db_frame.grid(row=1, column=0, sticky="ew")
+#         db_frame.grid_columnconfigure(0, weight=1)
+        
+#         # test = tk.StringVar(value=Pipeline().array_update)
+#         ttk.Label(db_frame, text="Map size: ").grid(row=0, column=0, sticky="w", padx=(0, 10), pady=(0, 0))
+#         ttk.Label(db_frame, text="Congestion: ").grid(row=1, column=0, sticky="w", padx=(0, 10), pady=(10, 0))
+#         ttk.Label(db_frame, text="Hash count: ").grid(row=2, column=0, sticky="w", padx=(0, 10), pady=(10, 0))
+
+#         ttk.Label(db_frame, text=self.app.pipeline.ARRAY_SIZE).grid(row=0, column=1, sticky="w", padx=(0, 10), pady=(0, 0))
+#         ttk.Label(db_frame, text=f"{(self.app.pipeline.hash_count/self.app.pipeline.ARRAY_SIZE):.4f}").grid(row=1, column=1, sticky="w", padx=(0, 10), pady=(10, 0))
+#         ttk.Label(db_frame, text=self.app.pipeline.hash_count).grid(row=2, column=1, sticky="w", padx=(0, 10), pady=(10, 0))
+
+#         #keyboard mapping
+#         self.window.bind("<Escape>", lambda event: self.close())
+
+#     def close(self):
+#         self.window.destroy()
 

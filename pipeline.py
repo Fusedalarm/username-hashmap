@@ -1,83 +1,132 @@
-from utils.array import Array
-from utils.hashfunc import Hash
+from hash import Hash, Array
+from linkedlist import LinkedList
 from pathlib import Path
+import hashlib
+from cryptography.fernet import Fernet
+
 
 class Pipeline:
     def __init__(self):
-        print()
-        self.hash = Hash()
-        self.array = Array()
+        #create dir and files required
+        self.initverif = False
+        array = Array()
         self.data_dir = Path(__file__).parent / "data"
         self.data_dir.mkdir(parents=True, exist_ok=True)
+       
         self.data_file = self.data_dir / "hash-info.txt"
         self.data_file.touch()
-        self.hash_managment()
 
-
-    def hash_managment(self):
-       # persistent hash counting
+        self.token = "amongusman"
+        self.token_hashed = hashlib.sha256(self.token.encode()).digest()
+        # persistent hash counting
         with self.data_file.open("r") as file:
             if file.read() == "":
                 self.hash_count = 0
-                self.array_init(16)
+                self.array_size = 16 #default
             else:
                 with self.data_file.open("r") as file:
                     line_count = file.readlines()
+                    # add decrypting here
 
                 for i in range(len(line_count)):
                     if line_count[i].startswith("hash-size:"):
                         self.hash_count = line_count[i].replace("hash-size:", "", 1).strip()
                         self.hash_count = int(self.hash_count)
+                        self.array_size = self.hash_count*2
                 
-                self.array_init(self.hash_count*2)
-
-            # re=hashing
-                with self.data_file.open("r") as file:
-                            line_count = file.readlines()
-
-                for i in range(len(line_count)):
-                    if line_count[i].startswith("k:"):
-                        self.key = line_count[i].replace("k:", "", 1).strip()
-                        self.key = str(self.key)
-                        if i+1 < len(line_count) and line_count[i+1].startswith("v:"):
-                            self.value = line_count[i+1].replace("v:", "", 1).strip()
-                            self.value = str(self.value)
-                        self.hashed_key = self.hash.hasher(self.key)
-                        self.store_hash(self.key, self.value)
-
-    def array_init(self, ARRAY_SIZE):
-        self.ARRAY_SIZE = ARRAY_SIZE
-        self.array_update = self.ARRAY_SIZE
-        self.array = Array().array_create(self.ARRAY_SIZE)
-
+            self.hash_map = array.create(self.array_size)
         
-    def value_input(self, key, value):
+        # re-hashing
+        with self.data_file.open("r") as file:
+                    line_count = file.readlines()
+                    # add decrypting here
+
+        for i in range(len(line_count)):
+            if line_count[i].startswith("k:"):
+                self.key = line_count[i].replace("k:", "", 1).strip()
+                self.key = str(self.key)
+                
+                # re hash
+                if i+1 < len(line_count) and line_count[i+1].startswith("v:"):
+                    self.value = line_count[i+1].replace("v:", "", 1).strip()
+                    self.value = str(self.value)
+                self.hashed_key = Hash().value(self.key) % self.array_size
+                
+                if self.hash_map[self.hashed_key][0] == 0:
+                    linkedlist = LinkedList()
+                    self.hash_map[self.hashed_key][0] = linkedlist
+                    a = linkedlist.append(self.key, self.value)
+                else:
+                    a = self.hash_map[self.hashed_key][0].append(self.key, self.value) # append to exsisting
+        
+            # delete
+            if line_count[i].startswith("Delete:"):
+                self.key = line_count[i].replace("Delete:", "", 1).strip()
+                self.key = str(self.key)
+                
+                raw_hash = Hash().value(self.key)
+                binned_hash = raw_hash % self.array_size
+
+                if self.hash_map[binned_hash][0] == 0:
+                    break
+                
+                self.retrieved_pair = self.hash_map[binned_hash][0].delete(self.key)
+        
+        self.initverif = True
+ 
+
+    def hash_value(self, key, value):
         self.key = key
         self.value = value
-        self.hashed_key = self.hash.hasher(self.key)
         
-        failsafe = self.store_hash(self.key, self.value)
-
-        if failsafe is True:
-            self.store_data(self.key, self.value)
-            return_value = "hash successful"
-            return(return_value)
+        raw_hash = Hash().value(self.key)
+        binned_hash = raw_hash % self.array_size
         
-        elif failsafe is False:
-            return_value = "hash map is full"
-            return(return_value)
-        elif failsafe == "invalid":
-            return_value = "key not allowed"
-            return(return_value)
+        # store the key-value
+        if self.hash_map[binned_hash][0] == 0:
+            linkedlist = LinkedList()
+            self.hash_map[binned_hash][0] = linkedlist
+            a = linkedlist.append(self.key, self.value)
         else:
-            return_value = "unexpected hash error occured"
-            return(return_value)
-    
-    def store_data(self, key, value):
+            a = self.hash_map[binned_hash][0].append(self.key, self.value) # append to exsisting
         
-        self.key = key
-        self.value = value 
+        if a == False: # make sure that hash functions is valid
+            return False
+        else:    
+            return True
 
+    def retrieve(self, key):
+
+        raw_hash = Hash().value(key)
+        binned_hash = raw_hash % self.array_size
+
+        if self.hash_map[binned_hash][0] == 0:
+            return False
+        
+        retrieved_pair = self.hash_map[binned_hash][0].retrieve(key)
+        if retrieved_pair == False:
+            return False
+        else:
+            return retrieved_pair.key, retrieved_pair.value
+
+    def delete(self, key):
+
+        raw_hash = Hash().value(key)
+        binned_hash = raw_hash % self.array_size
+
+        if self.hash_map[binned_hash][0] == 0:
+            return False
+        
+        retrieved_pair = self.hash_map[binned_hash][0].delete(key)
+        if retrieved_pair == False:
+            return False
+        else:
+            self.store_delete(key)
+            return True
+
+    def store_hash(self, key, value):
+        
+        raw_hash = Hash().value(key)
         self.data_file.touch()
 
         with self.data_file.open("a") as file:
@@ -88,9 +137,10 @@ class Pipeline:
                 self.hash_count += 1
 
             file.write("----------------------\n")
-            file.write(f"k: {self.key}\n")
-            file.write(f"v: {self.value}\n")
-            
+            file.write(f"k:{key}\n")
+            file.write(f"v:{value}\n")
+            file.write(f"h:{raw_hash}\n")
+        
         with self.data_file.open("r") as file:
             line_count = file.readlines()
 
@@ -100,52 +150,17 @@ class Pipeline:
 
         with self.data_file.open("w") as file:
             file.writelines(line_count)
-        
-        self.map_congestion = self.hash_count/self.ARRAY_SIZE
 
-        if self.map_congestion >= 0.75:
-            self.hash_managment()
+    def store_delete(self, key):
+        self.data_file.touch()
 
-
-    def store_hash(self, key, value):
-        self.key = key
-        self.value = value 
-        Array_index = self.hashed_key % self.ARRAY_SIZE
-        start_index = Array_index
-        while True:
-            if self.array[Array_index][0] == self.key:
-                return_value = "invalid"
-                return(return_value)
-            
-            if self.array[Array_index][0] == 0:
-                self.array[Array_index][0] = self.key
-                self.array[Array_index][1] = self.value
-                return_value = True
-                return(return_value)
-            else: 
-                Array_index = (Array_index + 1) % self.ARRAY_SIZE
-                if start_index == Array_index:
-                    return_value = False
-                    return(return_value)
-
-    def retrieve_key(self, key):
-        self.key = key
-        self.retrieval_hash = self.hash.hasher(self.key)
-        self.retrieval_index = self.retrieval_hash % self.ARRAY_SIZE
-        start_index = self.retrieval_index
-
-        while True:
-            self.key_validate = self.array[self.retrieval_index][0]
-            if self.key == self.key_validate:
-                return_value = f"{self.array[self.retrieval_index][0]}, {self.array[self.retrieval_index][1]}"
-                return(return_value)
-            elif self.key_validate == 0:
-                return_value = "key does not exist"
-                return(return_value)
+        with self.data_file.open("a") as file:
+            if self.hash_count == 0:
+                self.hash_count += 1
+                file.write(f"hash-size: {self.hash_count}\n")
             else:
-                self.retrieval_index = (self.retrieval_index + 1) % self.ARRAY_SIZE
-                if start_index == self.retrieval_index:
-                    return_value = "hash table is full"
-                    return(return_value)
-                     
+                self.hash_count += 1
 
+            file.write("----------------------\n")
+            file.write(f"Delete:{key}\n")
+            
