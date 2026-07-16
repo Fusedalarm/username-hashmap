@@ -10,17 +10,21 @@ class RootApp:
         self.main_ui()
         self.write_msg("program initialising...")
         self.pipeline = Pipeline()
-        if self.pipeline.initverif != False:
+        if self.pipeline.initverif == True:
             self.write_msg("program initialised")
-            self.msg = "pre-Alpha 3.0 (Expect bugs program WIP)"
+            self.msg = "pre-Alpha 3.1 (Expect bugs program WIP)"
             self.write_msg(self.msg)
+        elif self.pipeline.initverif == False:
+            self.write_msg("program initialising failed |Error code: 0")
+            self.write_msg("data corruption detected")
         else:
-            self.write_msg("program initialising failed |Error 01")
+            self.write_msg("program initialising failed |Error code: 01")
             self.write_msg("Diagnostic tool required")
 
     
     def main_ui(self):
-        self.root.title("Database")
+        self.root.title("Password Manager")
+        self.root.iconbitmap("passwordicon.ico")
         self.root.geometry("900x700")
         self.root.config(bg="#f5f5f5")
 
@@ -217,7 +221,7 @@ class MapWindow:
             self.window.destroy()
             if return_value == True:
                 self.app.write_msg("Hash Success")
-                self.app.pipeline.store_hash(self.key, self.value) #store hash
+                self.app.pipeline.store_hash(key, value) #store hash
             elif return_value == False:
                 self.app.write_msg("Hash Unsuccessful; Key already exists")
             else:

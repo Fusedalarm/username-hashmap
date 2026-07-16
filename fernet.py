@@ -10,9 +10,6 @@ data_dir.mkdir(parents=True, exist_ok=True)
 data_file = data_dir / "hash-info.txt"
 data_file.touch()
 
-hmac_file = data_dir / "hmac.txt"
-hmac_file.touch()
-
 class Encrypt:
     
     def __init__(self, password):
@@ -22,27 +19,18 @@ class Encrypt:
         prep_key = base64.urlsafe_b64encode(hash_key)
         self.fernet = Fernet(prep_key)
     
-    def encode(self, value):
+    def encoder(self, value):
         self.value = value
-
+ 
         encoded_value = self.value.encode()
 
         encrypted_value = self.fernet.encrypt(encoded_value)
 
-        print(encrypted_value)
-
-        return(encrypted_value)
+        return(encrypted_value + b"\n")
     
     def decode(self, value):
-
-        decrypted_value = self.fernet.decrypt(value).decode()
-
-        print(decrypted_value)
-
-
-password = "doodoofart"
-encrypt = Encrypt(password)
-
-test = encrypt.encode("amongus-mandem")
-
-test2 = encrypt.decode(test)
+        try:
+            decrypted_value = self.fernet.decrypt(value).decode()
+        except:
+            decrypted_value = False
+        return(decrypted_value)

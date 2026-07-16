@@ -2,13 +2,14 @@ from hash import Hash, Array
 from linkedlist import LinkedList
 from pathlib import Path
 import hashlib
-from cryptography.fernet import Fernet
+from fernet import Encrypt
 
 
 class Pipeline:
     def __init__(self):
         #create dir and files required
-        self.initverif = False
+        self.initverif = True
+        self.encrypt = Encrypt("testing")
         array = Array()
         self.data_dir = Path(__file__).parent / "data"
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -16,8 +17,7 @@ class Pipeline:
         self.data_file = self.data_dir / "hash-info.txt"
         self.data_file.touch()
 
-        self.token = "amongusman"
-        self.token_hashed = hashlib.sha256(self.token.encode()).digest()
+        
         # persistent hash counting
         with self.data_file.open("r") as file:
             if file.read() == "":
@@ -25,9 +25,17 @@ class Pipeline:
                 self.array_size = 16 #default
             else:
                 with self.data_file.open("r") as file:
-                    line_count = file.readlines()
+                    raw_lines = file.readlines()
                     # add decrypting here
-
+                
+                line_count = []
+                for line in raw_lines:
+                    decrypted = self.encrypt.decode(line)
+                    if decrypted != False:
+                        line_count.append(decrypted)
+                    else:
+                        self.initverif = False
+                        
                 for i in range(len(line_count)):
                     if line_count[i].startswith("hash-size:"):
                         self.hash_count = line_count[i].replace("hash-size:", "", 1).strip()
@@ -38,8 +46,16 @@ class Pipeline:
         
         # re-hashing
         with self.data_file.open("r") as file:
-                    line_count = file.readlines()
-                    # add decrypting here
+                    raw_lines = file.readlines()
+                    
+        # decrypt
+        line_count = []
+        for line in raw_lines:
+            if decrypted != False:
+                decrypted = self.encrypt.decode(line)
+                line_count.append(decrypted)
+            else: 
+                self.initverif = False
 
         for i in range(len(line_count)):
             if line_count[i].startswith("k:"):
@@ -67,12 +83,10 @@ class Pipeline:
                 raw_hash = Hash().value(self.key)
                 binned_hash = raw_hash % self.array_size
 
-                if self.hash_map[binned_hash][0] == 0:
-                    break
+                if self.hash_map[binned_hash][0] != 0:
+                    self.retrieved_pair = self.hash_map[binned_hash][0].delete(self.key)
+
                 
-                self.retrieved_pair = self.hash_map[binned_hash][0].delete(self.key)
-        
-        self.initverif = True
  
 
     def hash_value(self, key, value):
@@ -129,38 +143,49 @@ class Pipeline:
         raw_hash = Hash().value(key)
         self.data_file.touch()
 
-        with self.data_file.open("a") as file:
+        with self.data_file.open("ab") as file:
             if self.hash_count == 0:
                 self.hash_count += 1
-                file.write(f"hash-size: {self.hash_count}\n")
+                file.write(self.encrypt.encoder(f"hash-size: {self.hash_count}"))
             else:
                 self.hash_count += 1
 
-            file.write("----------------------\n")
-            file.write(f"k:{key}\n")
-            file.write(f"v:{value}\n")
-            file.write(f"h:{raw_hash}\n")
+            file.write(self.encrypt.encoder("----------------------"))
+            file.write(self.encrypt.encoder(f"k:{key}"))
+            file.write(self.encrypt.encoder(f"v:{value}"))
+            file.write(self.encrypt.encoder(f"h:{raw_hash}"))
         
-        with self.data_file.open("r") as file:
-            line_count = file.readlines()
+        with self.data_file.open("rb") as file:
+            raw_lines = file.readlines()
+
+        line_count = []
+        for line in raw_lines:
+            decrypted = self.encrypt.decode(line)
+            if decrypted != False:
+                line_count.append(decrypted)
 
         for i in range(len(line_count)):
             if line_count[i].startswith("hash-size:"):
                 line_count[i] = f"hash-size: {self.hash_count}\n"
 
-        with self.data_file.open("w") as file:
-            file.writelines(line_count)
+        encrypted_lines = []
+        for line in line_count:
+            encrypt = self.encrypt.encoder(line)
+            encrypted_lines.append(encrypt)
+
+        with self.data_file.open("wb") as file:
+            file.writelines(encrypted_lines)
 
     def store_delete(self, key):
         self.data_file.touch()
 
-        with self.data_file.open("a") as file:
+        with self.data_file.open("ab") as file:
             if self.hash_count == 0:
                 self.hash_count += 1
-                file.write(f"hash-size: {self.hash_count}\n")
+                file.write(self.encrypt.encoder(f"hash-size: {self.hash_count}"))
             else:
-                self.hash_count += 1
+                self.hash_count -= 1
 
-            file.write("----------------------\n")
-            file.write(f"Delete:{key}\n")
+            file.write(self.encrypt.encoder("----------------------"))
+            file.write(self.encrypt.encoder(f"Delete:{key}"))
             
