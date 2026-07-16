@@ -1,0 +1,48 @@
+import hmac 
+import hashlib
+from pathlib import Path
+from cryptography.fernet import Fernet
+import base64
+
+data_dir = Path(__file__).parent / "data"
+data_dir.mkdir(parents=True, exist_ok=True)
+
+data_file = data_dir / "hash-info.txt"
+data_file.touch()
+
+hmac_file = data_dir / "hmac.txt"
+hmac_file.touch()
+
+class Encrypt:
+    
+    def __init__(self, password):
+        self.password = password
+        
+        hash_key = hashlib.sha256(password.encode()).digest()
+        prep_key = base64.urlsafe_b64encode(hash_key)
+        self.fernet = Fernet(prep_key)
+    
+    def encode(self, value):
+        self.value = value
+
+        encoded_value = self.value.encode()
+
+        encrypted_value = self.fernet.encrypt(encoded_value)
+
+        print(encrypted_value)
+
+        return(encrypted_value)
+    
+    def decode(self, value):
+
+        decrypted_value = self.fernet.decrypt(value).decode()
+
+        print(decrypted_value)
+
+
+password = "doodoofart"
+encrypt = Encrypt(password)
+
+test = encrypt.encode("amongus-mandem")
+
+test2 = encrypt.decode(test)
