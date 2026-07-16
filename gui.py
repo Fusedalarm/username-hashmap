@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk 
 from pipeline import Pipeline
 from pathlib import Path
+from fernet import Encrypt
 
 
 class LoginWindow:
@@ -10,11 +11,11 @@ class LoginWindow:
 
         self.root.title("Password Manager")
         self.root.iconbitmap("passwordicon.ico")
-        self.root.geometry("300x160")
+        self.root.geometry("350x160")
         self.root.config(bg="#f5f5f5")
         
         self.data_dir = Path(__file__).parent / "data"
-        self.data_file = self.data_dir / "hash-info.txt"
+        self.data_file = self.data_dir / "hash-info.bin"
 
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
@@ -31,49 +32,60 @@ class LoginWindow:
         self.login_entry.grid(row=0, column=0, sticky="ew", pady=(0, 8))
         self.login_entry.focus_set() # focuses the cursor on the entery when opening the dialogue box
 
-        ttk.Button(db_frame, text="Enter", command=lambda: self.password_verif()).grid(row=1, column=0, sticky="ew", pady=(0, 8))
+        ttk.Button(db_frame, text="Enter", command=self.main_app_launcher).grid(row=1, column=0, sticky="ew", pady=(0, 8))
 
         self.result_label = ttk.Label(db_frame, text="", anchor="center")
         self.result_label.grid(row=2, column=0, sticky="ew")
 
-
         #keyboard mapping
-        self.root.bind("<Return>", lambda event: ...)
-        self.root.bind("<Escape>", lambda event: root.destroy())
+        self.root.bind("<Return>", lambda event: self.main_app_launcher())
+        self.root.bind("<Escape>", lambda event: self.root.destroy())
 
     def password_verif(self):
         passcode = self.login_entry.get().strip()
         if passcode == "":
             self.result_label.config(text="nothing entered")
-        else:
-            
-            with self.data_file.open("rb") as file:
-                if file.read() == b"":
-                    self.result_label.config(text="new passcode set")
-                else:
-                    with self.data_file.open("rb") as file:
-                        raw_lines = file.readlines()
-                    
-                    line_count = []
-                    for line in raw_lines:
-                        decrypted = self.encrypt.decode(line)
-                        if decrypted != False:
-                            line_count.append(decrypted)
-                        else:
-                            self.initverif = False
-                            return
+        else: 
+            try:
+                self.encrypt = Encrypt(passcode)
+                with self.data_file.open("rb") as file:
+                    if file.read() == b"":
+                        self.result_label.config(text="new passcode set")
+                        return(passcode)
+                    else:
+                        with self.data_file.open("rb") as file:
+                            raw_lines = file.readlines()
+                        
+                        line_count = []
+                        for line in raw_lines:
+                            decrypted = self.encrypt.decode(line)
+                            if decrypted != False:
+                                self.result_label.config(text="welcome back")
+                                return(passcode)
+                            else:
+                                self.result_label.config(text="wrong passcode entered/data file corrupted")
+            except FileNotFoundError:
+                self.result_label.config(text="new passcode set")
+                return(passcode)
+
+    def main_app_launcher(self):
+        a = self.password_verif()
+        if a is not None:
+            for widget in self.root.winfo_children():
+                widget.destroy()            
+            RootApp(self.root, a)
 
 
 class RootApp:
 
-    def __init__(self, root):
+    def __init__(self, root, password):
         self.root = root
         self.main_ui()
         self.write_msg("program initialising...")
-        self.pipeline = Pipeline()
+        self.pipeline = Pipeline(password)
         if self.pipeline.initverif == True:
             self.write_msg("program initialised")
-            self.msg = "pre-Alpha 3.1 (Expect bugs program WIP)"
+            self.msg = "pre-Alpha 4.0 (Expect bugs program WIP)"
             self.write_msg(self.msg)
         elif self.pipeline.initverif == False:
             self.write_msg("program initialising failed |Error code: 0")

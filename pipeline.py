@@ -4,34 +4,12 @@ from pathlib import Path
 import hashlib
 from fernet import Encrypt
 
-class Passcode:
-    
-    def passcode_verify(self, passcode):
-        if passcode == "":
-            self.result_label.config(text="nothing entered")
-        else:
-            
-            with self.data_file.open("rb") as file:
-                if file.read() == b"":
-                    self.result_label.config(text="new passcode set")
-                else:
-                    with self.data_file.open("rb") as file:
-                        raw_lines = file.readlines()
-                    
-                    line_count = []
-                    for line in raw_lines:
-                        decrypted = self.encrypt.decode(line)
-                        if decrypted == False:
-                            self.result_label.config(text="wrong passcode")
-                        else:
-                            self.result_label.config(text="welcome back")
-
 
 class Pipeline:
-    def __init__(self):
+    def __init__(self, password):
         #create dir and files required
         self.initverif = True
-        self.encrypt = Encrypt("testing")
+        self.encrypt = Encrypt(password)
         array = Array()
         self.data_dir = Path(__file__).parent / "data"
         self.data_dir.mkdir(parents=True, exist_ok=True)
