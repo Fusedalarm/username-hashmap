@@ -1,6 +1,67 @@
 import tkinter as tk
 from tkinter import ttk 
 from pipeline import Pipeline
+from pathlib import Path
+
+
+class LoginWindow:
+    def __init__(self, root):
+        self.root = root
+
+        self.root.title("Password Manager")
+        self.root.iconbitmap("passwordicon.ico")
+        self.root.geometry("300x160")
+        self.root.config(bg="#f5f5f5")
+        
+        self.data_dir = Path(__file__).parent / "data"
+        self.data_file = self.data_dir / "hash-info.txt"
+
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
+        
+        content_frame = ttk.Frame(self.root)
+        content_frame.grid(row=0, column=0, sticky="nsew", padx=15, pady=15)
+        content_frame.grid_columnconfigure(0, weight=1)
+        
+        db_frame = ttk.LabelFrame(content_frame, text="Enter Passcode: ", padding=15)
+        db_frame.grid(row=1, column=0, sticky="ew")
+        db_frame.grid_columnconfigure(0, weight=1)
+        
+        self.login_entry = ttk.Entry(db_frame, width=40)
+        self.login_entry.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+        self.login_entry.focus_set() # focuses the cursor on the entery when opening the dialogue box
+
+        ttk.Button(db_frame, text="Enter", command=lambda: self.password_verif()).grid(row=1, column=0, sticky="ew", pady=(0, 8))
+
+        self.result_label = ttk.Label(db_frame, text="", anchor="center")
+        self.result_label.grid(row=2, column=0, sticky="ew")
+
+
+        #keyboard mapping
+        self.root.bind("<Return>", lambda event: ...)
+        self.root.bind("<Escape>", lambda event: root.destroy())
+
+    def password_verif(self):
+        passcode = self.login_entry.get().strip()
+        if passcode == "":
+            self.result_label.config(text="nothing entered")
+        else:
+            
+            with self.data_file.open("rb") as file:
+                if file.read() == b"":
+                    self.result_label.config(text="new passcode set")
+                else:
+                    with self.data_file.open("rb") as file:
+                        raw_lines = file.readlines()
+                    
+                    line_count = []
+                    for line in raw_lines:
+                        decrypted = self.encrypt.decode(line)
+                        if decrypted != False:
+                            line_count.append(decrypted)
+                        else:
+                            self.initverif = False
+                            return
 
 
 class RootApp:
@@ -17,10 +78,11 @@ class RootApp:
         elif self.pipeline.initverif == False:
             self.write_msg("program initialising failed |Error code: 0")
             self.write_msg("data corruption detected")
+            self.set_state(self.root, "disabled")
         else:
             self.write_msg("program initialising failed |Error code: 01")
             self.write_msg("Diagnostic tool required")
-
+            self.set_state(self.root, "disabled")
     
     def main_ui(self):
         self.root.title("Password Manager")
@@ -90,18 +152,22 @@ class RootApp:
     def exit_program(self):
         self.root.destroy()
 
-    # def get_value(self, entry, data_name):
-    #     self.entry = entry
-    #     self.data_name = data_name
-    #     a = entry
-    #     a = PreCalculator.entry_fill_validator(a, data_name, self)
-    #     if a is not None:
-    #         a = PreCalculator.entry_numeric_validator(a, data_name, self)
-    #         return a
-    #     else:
-    #         return None
+    def set_state(self, window, states):
+        for widget in window.winfo_children():
+            try:
+                widget.state([states])   # ttk widgets
+            except (tk.TclError, AttributeError):
+                try:
+                    widget.configure(state=states)  # tk widgets
+                except (tk.TclError, AttributeError):
+                    pass
+            self.set_state(widget, states)
 
-    
+        self.root.unbind("<Key-1>")
+        self.root.unbind("<Key-2>")
+        self.root.unbind("<Key-3>")
+        self.root.unbind("<Key-4>") # leaves out escape
+
     def open_child_window(self, selector):
         self.selector = selector
         if self.selector == "r":
@@ -150,6 +216,7 @@ class RetrieveWindow:
     def close(self):
         self.window.destroy()
     
+
     def retrieve_value(self, entry):
         self.entry = entry
         key = self.entry.get().strip()
@@ -276,6 +343,9 @@ class DeleteWindow:
             self.window.destroy()
         else:
             self.app.write_msg("nothing has been entered")
+
+    def close(self):
+        self.window.destroy()
 
 # class StatWindow:
 #     def __init__(self, parent, app):

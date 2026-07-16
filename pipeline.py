@@ -4,6 +4,28 @@ from pathlib import Path
 import hashlib
 from fernet import Encrypt
 
+class Passcode:
+    
+    def passcode_verify(self, passcode):
+        if passcode == "":
+            self.result_label.config(text="nothing entered")
+        else:
+            
+            with self.data_file.open("rb") as file:
+                if file.read() == b"":
+                    self.result_label.config(text="new passcode set")
+                else:
+                    with self.data_file.open("rb") as file:
+                        raw_lines = file.readlines()
+                    
+                    line_count = []
+                    for line in raw_lines:
+                        decrypted = self.encrypt.decode(line)
+                        if decrypted == False:
+                            self.result_label.config(text="wrong passcode")
+                        else:
+                            self.result_label.config(text="welcome back")
+
 
 class Pipeline:
     def __init__(self):
@@ -14,19 +36,17 @@ class Pipeline:
         self.data_dir = Path(__file__).parent / "data"
         self.data_dir.mkdir(parents=True, exist_ok=True)
        
-        self.data_file = self.data_dir / "hash-info.txt"
+        self.data_file = self.data_dir / "hash-info.bin"
         self.data_file.touch()
 
-        
         # persistent hash counting
-        with self.data_file.open("r") as file:
-            if file.read() == "":
+        with self.data_file.open("rb") as file:
+            if file.read() == b"":
                 self.hash_count = 0
                 self.array_size = 16 #default
             else:
-                with self.data_file.open("r") as file:
+                with self.data_file.open("rb") as file:
                     raw_lines = file.readlines()
-                    # add decrypting here
                 
                 line_count = []
                 for line in raw_lines:
@@ -35,27 +55,29 @@ class Pipeline:
                         line_count.append(decrypted)
                     else:
                         self.initverif = False
+                        return
                         
                 for i in range(len(line_count)):
                     if line_count[i].startswith("hash-size:"):
                         self.hash_count = line_count[i].replace("hash-size:", "", 1).strip()
-                        self.hash_count = int(self.hash_count)
+                        self.hash_count = int((self.hash_count))
                         self.array_size = self.hash_count*2
                 
             self.hash_map = array.create(self.array_size)
         
         # re-hashing
-        with self.data_file.open("r") as file:
-                    raw_lines = file.readlines()
+        with self.data_file.open("rb") as file:
+            raw_lines = file.readlines()
                     
         # decrypt
         line_count = []
         for line in raw_lines:
+            decrypted = self.encrypt.decode(line)
             if decrypted != False:
-                decrypted = self.encrypt.decode(line)
                 line_count.append(decrypted)
             else: 
                 self.initverif = False
+                return 
 
         for i in range(len(line_count)):
             if line_count[i].startswith("k:"):
@@ -85,9 +107,6 @@ class Pipeline:
 
                 if self.hash_map[binned_hash][0] != 0:
                     self.retrieved_pair = self.hash_map[binned_hash][0].delete(self.key)
-
-                
- 
 
     def hash_value(self, key, value):
         self.key = key
@@ -188,4 +207,5 @@ class Pipeline:
 
             file.write(self.encrypt.encoder("----------------------"))
             file.write(self.encrypt.encoder(f"Delete:{key}"))
-            
+    
+    
