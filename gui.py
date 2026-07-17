@@ -3,6 +3,7 @@ from tkinter import ttk
 from pipeline import Pipeline
 from pathlib import Path
 from fernet import Encrypt
+import time
 
 
 class LoginWindow:
@@ -32,13 +33,13 @@ class LoginWindow:
         self.login_entry.grid(row=0, column=0, sticky="ew", pady=(0, 8))
         self.login_entry.focus_set() # focuses the cursor on the entery when opening the dialogue box
 
-        ttk.Button(db_frame, text="Enter", command=self.main_app_launcher).grid(row=1, column=0, sticky="ew", pady=(0, 8))
+        ttk.Button(db_frame, text="Enter", command=self.password_verif).grid(row=1, column=0, sticky="ew", pady=(0, 8))
 
         self.result_label = ttk.Label(db_frame, text="", anchor="center")
         self.result_label.grid(row=2, column=0, sticky="ew")
 
         #keyboard mapping
-        self.root.bind("<Return>", lambda event: self.main_app_launcher())
+        self.root.bind("<Return>", lambda event: self.main_app_launcher(self.password_verif()))
         self.root.bind("<Escape>", lambda event: self.root.destroy())
 
     def password_verif(self):
@@ -50,8 +51,8 @@ class LoginWindow:
                 self.encrypt = Encrypt(passcode)
                 with self.data_file.open("rb") as file:
                     if file.read() == b"":
-                        self.result_label.config(text="new passcode set")
-                        return(passcode)
+                        self.result_label.config(text="New Password set")
+                        self.root.after(2000, lambda: self.main_app_launcher(passcode))
                     else:
                         with self.data_file.open("rb") as file:
                             raw_lines = file.readlines()
@@ -60,16 +61,16 @@ class LoginWindow:
                         for line in raw_lines:
                             decrypted = self.encrypt.decode(line)
                             if decrypted != False:
-                                self.result_label.config(text="welcome back")
-                                return(passcode)
+                                self.result_label.config(text="Welcome back, Anon")
+                                self.root.after(2000, lambda: self.main_app_launcher(passcode))
                             else:
                                 self.result_label.config(text="wrong passcode entered/data file corrupted")
             except FileNotFoundError:
                 self.result_label.config(text="new passcode set")
                 return(passcode)
 
-    def main_app_launcher(self):
-        a = self.password_verif()
+    def main_app_launcher(self, passcode):
+        a = passcode
         if a is not None:
             for widget in self.root.winfo_children():
                 widget.destroy()            
