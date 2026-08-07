@@ -10,12 +10,15 @@ class Pipeline:
         #create dir and files required
         self.initverif = True
         self.encrypt = Encrypt(password)
+        self.linkedlist = LinkedList()
         array = Array()
         self.data_dir = Path(__file__).parent / "data"
         self.data_dir.mkdir(parents=True, exist_ok=True)
        
         self.data_file = self.data_dir / "hash-info.bin"
         self.data_file.touch()
+
+        self.collisions = self.linkedlist.collision_count 
 
         # persistent hash counting
         with self.data_file.open("rb") as file:
@@ -69,12 +72,12 @@ class Pipeline:
                 self.hashed_key = Hash().value(self.key) % self.array_size
                 
                 if self.hash_map[self.hashed_key][0] == 0:
-                    linkedlist = LinkedList()
-                    self.hash_map[self.hashed_key][0] = linkedlist
-                    a = linkedlist.append(self.key, self.value)
+                    self.hash_map[self.hashed_key][0] = self.linkedlist
+                    a = self.linkedlist.append(self.key, self.value)
                 else:
                     a = self.hash_map[self.hashed_key][0].append(self.key, self.value) # append to exsisting
-        
+                self.collisions = self.linkedlist.collision_count # collisions count updating
+
             # delete
             if line_count[i].startswith("Delete:"):
                 self.key = line_count[i].replace("Delete:", "", 1).strip()
@@ -95,15 +98,15 @@ class Pipeline:
         
         # store the key-value
         if self.hash_map[binned_hash][0] == 0:
-            linkedlist = LinkedList()
-            self.hash_map[binned_hash][0] = linkedlist
-            a = linkedlist.append(self.key, self.value)
+            self.hash_map[binned_hash][0] = self.linkedlist
+            a = self.linkedlist.append(self.key, self.value)
         else:
             a = self.hash_map[binned_hash][0].append(self.key, self.value) # append to exsisting
         
         if a == False: # make sure that hash functions is valid
             return False
-        else:    
+        else:   
+            self.collisions = self.linkedlist.collision_count 
             return True
 
     def retrieve(self, key):
@@ -187,3 +190,40 @@ class Pipeline:
             file.write(self.encrypt.encoder(f"Delete:{key}"))
     
     
+# class SettingsWindow:
+#     def __init__(self, parent, app):
+#         self.window = tk.Toplevel(parent)
+#         self.app = app
+#         self.window.transient(parent) # makes child toplevel act as a dialogue box
+#         self.window.grab_set() #force use window until closed (initialises 1 second after window opens)
+#         self.window.focus_set() # focuses on the window 
+
+#         self.window.title("Settings")
+#         self.window.geometry(f"250x155+{self.app.x + 800}+{self.app.y + 100}")
+#         self.window.config(bg="#f5f5f5")
+        
+#         self.window.grid_rowconfigure(0, weight=1)
+#         self.window.grid_columnconfigure(0, weight=1)
+        
+#         content_frame = ttk.Frame(self.window)
+#         content_frame.grid(row=0, column=0, sticky="nsew", padx=15, pady=15)
+#         content_frame.grid_columnconfigure(0, weight=1)
+        
+#         db_frame = ttk.LabelFrame(content_frame, text="Statistics", padding=15)
+#         db_frame.grid(row=1, column=0, sticky="ew")
+#         db_frame.grid_columnconfigure(0, weight=1)
+        
+#         # test = tk.StringVar(value=Pipeline().array_update)
+#         ttk.Label(db_frame, text="Map size: ").grid(row=0, column=0, sticky="w", padx=(0, 10), pady=(0, 0))
+#         ttk.Label(db_frame, text="Congestion: ").grid(row=1, column=0, sticky="w", padx=(0, 10), pady=(10, 0))
+#         ttk.Label(db_frame, text="Hash count: ").grid(row=2, column=0, sticky="w", padx=(0, 10), pady=(10, 0))
+
+#         Map_C_frame = ttk.Label(db_frame, text="---").grid(row=0, column=1, sticky="w", padx=(0, 10), pady=(0, 0))
+#         C_frame = ttk.Label(db_frame, text="---").grid(row=1, column=1, sticky="w", padx=(0, 10), pady=(10, 0))
+#         Hash_amount_frame = ttk.Label(db_frame, text="---").grid(row=2, column=1, sticky="w", padx=(0, 10), pady=(10, 0))
+
+#         #keyboard mapping
+#         self.window.bind("<Escape>", lambda event: self.close())
+
+#     def close(self):
+#         self.window.destroy()

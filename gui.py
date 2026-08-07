@@ -3,6 +3,7 @@ from tkinter import ttk
 from pipeline import Pipeline
 from pathlib import Path
 from fernet import Encrypt
+from linkedlist import LinkedList
 import time
 
 
@@ -140,12 +141,14 @@ class RootApp:
         ttk.Button(action_frame, text="Map", command= lambda: self.open_child_window("m")).pack(side="left", padx=(0, 10))
         ttk.Button(action_frame, text="Delete", command= lambda: self.open_child_window("d")).pack(side="left", padx=(0, 10))
         ttk.Button(action_frame, text="Clear Screen", command=self.clear_screen).pack(side="left", padx=(0, 10))
+        ttk.Button(action_frame, text="Settings", command= lambda: self.open_child_window("s")).pack(side="left", padx=(0, 10))
         ttk.Button(action_frame, text="Exit", command=self.exit_program).pack(side="left")
         #keyboard mapping
         self.root.bind("<Key-1>", lambda event: self.open_child_window("r"))
         self.root.bind("<Key-2>", lambda event: self.open_child_window("m"))
         self.root.bind("<Key-3>", lambda event: self.open_child_window("d"))
         self.root.bind("<Key-4>", lambda event: self.clear_screen())
+        self.root.bind("<Key-5>", lambda event: self.open_child_window("s"))
         self.root.bind("<Escape>", lambda event: self.exit_program())
 
     def write_msg(self, message):
@@ -189,8 +192,8 @@ class RootApp:
             MapWindow(self.root, self)
         elif self.selector == "d":
             DeleteWindow(self.root, self)
-        # elif self.selector == "s":
-        #     StatWindow(self.root, self)
+        elif self.selector == "s":
+            SettingsWindow(self.root, self)
 
 class RetrieveWindow:
     def __init__(self, parent, app):
@@ -360,41 +363,51 @@ class DeleteWindow:
     def close(self):
         self.window.destroy()
 
-# class StatWindow:
-#     def __init__(self, parent, app):
-#         self.window = tk.Toplevel(parent)
-#         self.app = app
-#         self.window.transient(parent) # makes child toplevel act as a dialogue box
-#         self.window.grab_set() #force use window until closed (initialises 1 second after window opens)
-#         self.window.focus_set() # focuses on the window 
+class SettingsWindow:
+    def __init__(self, parent, app):
+        self.window = tk.Toplevel(parent)
+        self.app = app
+        self.window.transient(parent) # makes child toplevel act as a dialogue box
+        self.window.grab_set() #force use window until closed (initialises 1 second after window opens)
+        self.window.focus_set() # focuses on the window 
 
-#         self.window.title("Stats")
-#         self.window.geometry(f"250x155+{self.app.x + 800}+{self.app.y + 100}")
-#         self.window.config(bg="#f5f5f5")
+        self.window.title("Settings")
+        self.window.geometry(f"250x185+{self.app.x + 800}+{self.app.y + 100}")
+        self.window.config(bg="#f5f5f5")
         
-#         self.window.grid_rowconfigure(0, weight=1)
-#         self.window.grid_columnconfigure(0, weight=1)
+        self.window.grid_rowconfigure(0, weight=1)
+        self.window.grid_columnconfigure(0, weight=1)
         
-#         content_frame = ttk.Frame(self.window)
-#         content_frame.grid(row=0, column=0, sticky="nsew", padx=15, pady=15)
-#         content_frame.grid_columnconfigure(0, weight=1)
+        content_frame = ttk.Frame(self.window)
+        content_frame.grid(row=0, column=0, sticky="nsew", padx=15, pady=15)
+        content_frame.grid_columnconfigure(0, weight=1)
         
-#         db_frame = ttk.LabelFrame(content_frame, text="Statistics", padding=15)
-#         db_frame.grid(row=1, column=0, sticky="ew")
-#         db_frame.grid_columnconfigure(0, weight=1)
+        db_frame = ttk.LabelFrame(content_frame, text="Statistics", padding=15)
+        db_frame.grid(row=1, column=0, sticky="ew")
+        db_frame.grid_columnconfigure(0, weight=1)
         
-#         # test = tk.StringVar(value=Pipeline().array_update)
-#         ttk.Label(db_frame, text="Map size: ").grid(row=0, column=0, sticky="w", padx=(0, 10), pady=(0, 0))
-#         ttk.Label(db_frame, text="Congestion: ").grid(row=1, column=0, sticky="w", padx=(0, 10), pady=(10, 0))
-#         ttk.Label(db_frame, text="Hash count: ").grid(row=2, column=0, sticky="w", padx=(0, 10), pady=(10, 0))
+        # test = tk.StringVar(value=Pipeline().array_update)
+        ttk.Label(db_frame, text="Map size: ").grid(row=0, column=0, sticky="w", padx=(0, 10), pady=(0, 0))
+        ttk.Label(db_frame, text="Congestion: ").grid(row=1, column=0, sticky="w", padx=(0, 10), pady=(10, 0))
+        ttk.Label(db_frame, text="Hash count: ").grid(row=2, column=0, sticky="w", padx=(0, 10), pady=(10, 0))
+        ttk.Label(db_frame, text="Collisions: ").grid(row=3, column=0, sticky="w", padx=(0, 10), pady=(10, 0))
 
-#         ttk.Label(db_frame, text=self.app.pipeline.ARRAY_SIZE).grid(row=0, column=1, sticky="w", padx=(0, 10), pady=(0, 0))
-#         ttk.Label(db_frame, text=f"{(self.app.pipeline.hash_count/self.app.pipeline.ARRAY_SIZE):.4f}").grid(row=1, column=1, sticky="w", padx=(0, 10), pady=(10, 0))
-#         ttk.Label(db_frame, text=self.app.pipeline.hash_count).grid(row=2, column=1, sticky="w", padx=(0, 10), pady=(10, 0))
+        Map_size_frame = ttk.Label(db_frame, text=app.pipeline.array_size).grid(row=0, column=1, sticky="w", padx=(0, 10), pady=(0, 0))
+        C_frame = ttk.Label(db_frame, text=f"{app.pipeline.hash_count/app.pipeline.array_size}").grid(row=1, column=1, sticky="w", padx=(0, 10), pady=(10, 0))
+        Hash_amount_frame = ttk.Label(db_frame, text= app.pipeline.hash_count).grid(row=2, column=1, sticky="w", padx=(0, 10), pady=(10, 0))
+        collisions = ttk.Label(db_frame, text= f"{app.pipeline.collisions}").grid(row=3, column=1, sticky="w", padx=(0, 10), pady=(10, 0))
 
-#         #keyboard mapping
-#         self.window.bind("<Escape>", lambda event: self.close())
+        #keyboard mapping
+        self.window.bind("<Escape>", lambda event: self.close())
 
-#     def close(self):
-#         self.window.destroy()
+    # def update_from_pipeline(self, variable):
+    #     if variable == "Map_C":
+    #         ...
+    #     elif variable == "C":
+    #         ...
+    #     elif variable == "Hash_amount":
+    #         ...
+            
+    def close(self):
+        self.window.destroy()
 

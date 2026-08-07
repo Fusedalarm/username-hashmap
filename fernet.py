@@ -6,7 +6,6 @@ import base64
 
 data_dir = Path(__file__).parent / "data"
 data_dir.mkdir(parents=True, exist_ok=True)
-
 data_file = data_dir / "hash-info.bin"
 data_file.touch()
 

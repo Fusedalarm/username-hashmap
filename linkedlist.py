@@ -8,6 +8,7 @@ class Node:
 class LinkedList:
     def __init__(self):
         self.head = None
+        self.collision_count = 0
        
 
     def append(self, key, value):
@@ -28,7 +29,7 @@ class LinkedList:
                 break
 
             current = current.next # keep iterating through the list until pointer is none
-        
+        self.collision_count += 1
         current.next = temp_store
         return current.next
     
